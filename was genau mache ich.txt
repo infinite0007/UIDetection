@@ -1,0 +1,16 @@
+supercool an und aus für features UI oder busknoten testknoten man kann alles mögliche testen zb auch statuslicht mit bwm ausgang ein uns aus und im tesa kann man es verifizieren
+aber eine schwachstelle das disoplay
+
+Jeder screen hat ne nummer die kann man schon abfragen: display funktioniert so: fire and forget hat wertx und schicks ans display und gehe davon aus dass das display das anzeigt gibt keinen weg zurück die schwachstelle dafür testing und verifikation zeigt es dass an was ich erwarte.
+party mode kann blau oder nicht blau sein also besonderes feature aktiv andere temperatur als normal und das muss man auch testen.
+Können bei font sehr viele fehler passieren mit paar bits sonst steht da pii?9281 oder so komische codierungsfehler
+
+
+
+Bei Pixel: gebe einfach intzahl also 100grüne 200blaue 2000 schwarze 700weiße oder so
+
+
+Klar es gibt gute Infrarotkameras für 4000€
+
+Integrationstests im ngihtkly build funktioniert dier software wie wir sie verwalten für unser verständnis die für 4000€ schaut danach nochmal drauf 
+für unser daily build günstige Lösung um unsere Qualität zu steigern udn Fehler zu finden

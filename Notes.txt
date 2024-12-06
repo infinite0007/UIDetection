@@ -1,0 +1,15 @@
+- Was hebt mich bzw. meine Implementierung von anderen Umsetzungen ab? Wo liegt der Vorteil? Was mache ich besser/anders
+- Warum gibt es eine analoge Lösung für ein eigentliches digitales Problem (Stichwort: Kamera)? digital UI --> analog Kamera --> digital Code
+Da es zu Zeitaufwendig wäre die Modifikation der Pins selbstsändig zu machen möglich aber alles sehr filigran und die Firma die diese Produziert macht es nicht von selber,
+man bräuchte neue Baupläne und Centkosten mehr für Liebherr weshalb dieser Ansatzt von der Oberen ebene verneint wurde. Deshalb Kamera um Display zu übertragen
+- Warum Opencv? Mir war es wichtig eine Breite schnittstelle an Programmiersprachen unc crossplatform compatibilität zu haben sollte man nicht immer auf Windows bleiben. Außerdem ist opencv Open source und besitzt eine breite community die lizenzfrei immer und in zukunft zur verfügung steht. Aiuch ist die Firma dahinter eine non profit organisation.
+
+Probleme:
+Bilder also Snapshots der Kamera sind Tagsüber mit Beleuchtung der Deckenlampe super jedoch nachts einfach sehr schlecht Lösung?: Belichtung bzw. der delay der Kamera bei Snapshots automatisch anpassen aber wenn ja wie welche Faktoren fast unmöglich zu berücksichtigen nur Tag/nacht oder auch wolkig wie soll man das immer alles prüfen generalisieren eventuell mit einer geschlossenen Kiste? oder die Bilder immer gleich erstellen und diese dann durch Algorithmus autohelligkeit immer auf einen Sollwert regeln
+
+
+# Breite und Höhe des Bildes extrahieren (openCV)
+height, width = gray_img.shape[:2]
+# Breite (width) und Höhe (height) anzeigen
+print(f"width: {width} Pixel")
+print(f"height: {height} Pixel")
