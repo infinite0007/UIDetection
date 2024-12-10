@@ -7,6 +7,18 @@ man bräuchte neue Baupläne und Centkosten mehr für Liebherr weshalb dieser An
 Probleme:
 Bilder also Snapshots der Kamera sind Tagsüber mit Beleuchtung der Deckenlampe super jedoch nachts einfach sehr schlecht Lösung?: Belichtung bzw. der delay der Kamera bei Snapshots automatisch anpassen aber wenn ja wie welche Faktoren fast unmöglich zu berücksichtigen nur Tag/nacht oder auch wolkig wie soll man das immer alles prüfen generalisieren eventuell mit einer geschlossenen Kiste? oder die Bilder immer gleich erstellen und diese dann durch Algorithmus autohelligkeit immer auf einen Sollwert regeln
 
+Meine Anforderungen:
+- Modularer klar strukturierter Aufbau das jede Funktion auch eine eigene Methode hat die aufgerufen werden kann aber chronologisch gut funktioniert
+
+
+Ablauf:
+1. Einlesen eines Bildes mit flexibler Anpassung an Größe, Nähe und Neigung.
+2. Erkennung und Extraktion des Displays (viereckige UI).
+3. Analyse der Pixel pro Farbe und Histogramme pro Farbe.
+4. OCR-Analyse, um Texte zu erkennen und zu prüfen, ob ein bestimmter Text vorhanden ist.
+5. Prüfen, ob ein gegebenes Bild ein Teil des Bildschirms ist und an der richtigen Position erkannt wird.
+
+
 
 # Breite und Höhe des Bildes extrahieren (openCV)
 height, width = gray_img.shape[:2]
