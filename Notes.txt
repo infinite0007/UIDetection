@@ -5,7 +5,11 @@ man bräuchte neue Baupläne und Centkosten mehr für Liebherr weshalb dieser An
 - Warum Opencv? Mir war es wichtig eine Breite schnittstelle an Programmiersprachen unc crossplatform compatibilität zu haben sollte man nicht immer auf Windows bleiben. Außerdem ist opencv Open source und besitzt eine breite community die lizenzfrei immer und in zukunft zur verfügung steht. Aiuch ist die Firma dahinter eine non profit organisation.
 
 Probleme:
-Bilder also Snapshots der Kamera sind Tagsüber mit Beleuchtung der Deckenlampe super jedoch nachts einfach sehr schlecht Lösung?: Belichtung bzw. der delay der Kamera bei Snapshots automatisch anpassen aber wenn ja wie welche Faktoren fast unmöglich zu berücksichtigen nur Tag/nacht oder auch wolkig wie soll man das immer alles prüfen generalisieren eventuell mit einer geschlossenen Kiste? oder die Bilder immer gleich erstellen und diese dann durch Algorithmus autohelligkeit immer auf einen Sollwert regeln
+- Bilder also Snapshots der Kamera sind Tagsüber mit Beleuchtung der Deckenlampe super jedoch nachts einfach sehr schlecht Lösung?: Belichtung bzw. der delay der Kamera bei Snapshots automatisch anpassen aber wenn ja wie welche Faktoren fast unmöglich zu berücksichtigen nur Tag/nacht oder auch wolkig wie soll man das immer alles prüfen generalisieren eventuell mit einer geschlossenen Kiste? oder die Bilder immer gleich erstellen und diese dann durch Algorithmus autohelligkeit immer auf einen Sollwert regeln
+- Fokusstörung da immer auf Hintergrund fokusiert und Video langlaufend snapshotten sind die Ergebnisse auch von madiger Qualität
+- Farbspektrum analysieren der Pixel ohne Toleranz unmöglich da man denkt es ist schwarz aber am Ende ist keines genau also = 0 schwarz deswegen muss mit Toleranz gearbeitet werden das fast schwarz oder eben auf alle anderen Farben angewendet auch funktioniert.
+- Welches Featurematcher algorithmus nehmen? Da vergleich der vielen mit besseren da kostenlos usw.. siehe Folien und ab weiviel matches es denn als sicher gilt auswerten
+- ocr probiert und halt bei allem brauchen wir Bilder mit vernünftiger Qualität problem von oben
 
 Meine Anforderungen:
 - Modularer klar strukturierter Aufbau das jede Funktion auch eine eigene Methode hat die aufgerufen werden kann aber chronologisch gut funktioniert
