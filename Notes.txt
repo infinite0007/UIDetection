@@ -8,7 +8,8 @@ Probleme:
 - Bilder also Snapshots der Kamera sind Tagsüber mit Beleuchtung der Deckenlampe super jedoch nachts einfach sehr schlecht Lösung?: Belichtung bzw. der delay der Kamera bei Snapshots automatisch anpassen aber wenn ja wie welche Faktoren fast unmöglich zu berücksichtigen nur Tag/nacht oder auch wolkig wie soll man das immer alles prüfen generalisieren eventuell mit einer geschlossenen Kiste? oder die Bilder immer gleich erstellen und diese dann durch Algorithmus autohelligkeit immer auf einen Sollwert regeln
 - Fokusstörung da immer auf Hintergrund fokusiert und Video langlaufend snapshotten sind die Ergebnisse auch von madiger Qualität
 - Farbspektrum analysieren der Pixel ohne Toleranz unmöglich da man denkt es ist schwarz aber am Ende ist keines genau also = 0 schwarz deswegen muss mit Toleranz gearbeitet werden das fast schwarz oder eben auf alle anderen Farben angewendet auch funktioniert.
-- Welches Featurematcher algorithmus nehmen? Da vergleich der vielen mit besseren da kostenlos usw.. siehe Folien und ab weiviel matches es denn als sicher gilt auswerten
+- Welches Featurematcher algorithmus nehmen? Da vergleich der vielen mit besseren da kostenlos usw.. siehe Folien Chapter:3 Seite 71 und ab weiviel matches es denn als sicher gilt auswerten (siehe nächstes Problem)
+- wieviele feature best matches sind oder werden benötigt um eine gute klassifizierung zu bieten? laut ChatGPT: Threshold-Adaption in der Praxis: Einige Studien argumentieren, dass die Anzahl der benötigten Übereinstimmungen abhängig von der Szene und den Anforderungen variiert. In kontrollierten Umgebungen wird oft ein höherer Schwellenwert (z. B. 50 oder mehr Übereinstimmungen) gefordert, um eine hohe Zuverlässigkeit sicherzustellen, da die Bilddaten weniger durch externe Störfaktoren beeinflusst werden​ aber siehe auch diese Papers: 1. https://elib.dlr.de/97889/1/brisk_rm.pdf  2. https://isprs-archives.copernicus.org/articles/XL-1/371/2014/isprsarchives-XL-1-371-2014.pdf
 - ocr probiert und halt bei allem brauchen wir Bilder mit vernünftiger Qualität problem von oben
 
 Meine Anforderungen:
@@ -22,6 +23,13 @@ Ablauf:
 4. OCR-Analyse, um Texte zu erkennen und zu prüfen, ob ein bestimmter Text vorhanden ist.
 5. Prüfen, ob ein gegebenes Bild ein Teil des Bildschirms ist und an der richtigen Position erkannt wird.
 
+Inhaltlich Paper:
+- Abstract
+- Project explainen
+- Technologien/ algorithmen warum und wie sie funktionieren
+- Was hebt mein Projekt von anderen ab oder Use-Case erklären (Automation)
+- Evaluierung
+
 
 
 # Breite und Höhe des Bildes extrahieren (openCV)
@@ -29,3 +37,26 @@ height, width = gray_img.shape[:2]
 # Breite (width) und Höhe (height) anzeigen
 print(f"width: {width} Pixel")
 print(f"height: {height} Pixel")
+
+
+
+Robustheit:
+- auf einem geht es aber ich auf vielen Bildern teste
+- 
+Paper:
+- Was soll das 20.000 rote pixel aber wenn wir soll ich die nutzerausgabe machen also reicht ihnen die pixel 
+- habe farbräume in 2 oder 3dimensionale raum wo ist der bereich der als rot bewertet wird, woanders würde das so nicht gehen zb autonomes fahren eventuell mathematisch aufschreiben wie ich das mathematisch recherchieren kann also klassifijation in 3 bereiche formuliert als formel je nach pixelwert
+schreiben warum und wie man auf den weg gekommen ist den man nun macht.
+
+in our pprior experience it wasnt successfull because of.. pixel classification auf dieses weges entschieden wir usn für das einfügen einer farbtolleranz 
+
+Begründen warum ich diesen weg wählen
+
+von wir sprechen.
+
+Liebherr gespräch feedback:
+echte Pixel mit Display vergleichen bzw. setzen
+
+- returnwerte von einzelnen teile möglich
+- ocr KI offline möglich?
+- software packages lizensen prüfen
