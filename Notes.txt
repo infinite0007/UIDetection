@@ -11,6 +11,12 @@ Probleme:
 - Welches Featurematcher algorithmus nehmen? Da vergleich der vielen mit besseren da kostenlos usw.. siehe Folien Chapter:3 Seite 71 und ab weiviel matches es denn als sicher gilt auswerten (siehe nächstes Problem)
 - wieviele feature best matches sind oder werden benötigt um eine gute klassifizierung zu bieten? laut ChatGPT: Threshold-Adaption in der Praxis: Einige Studien argumentieren, dass die Anzahl der benötigten Übereinstimmungen abhängig von der Szene und den Anforderungen variiert. In kontrollierten Umgebungen wird oft ein höherer Schwellenwert (z. B. 50 oder mehr Übereinstimmungen) gefordert, um eine hohe Zuverlässigkeit sicherzustellen, da die Bilddaten weniger durch externe Störfaktoren beeinflusst werden​ aber siehe auch diese Papers: 1. https://elib.dlr.de/97889/1/brisk_rm.pdf  2. https://isprs-archives.copernicus.org/articles/XL-1/371/2014/isprsarchives-XL-1-371-2014.pdf
 - ocr probiert und halt bei allem brauchen wir Bilder mit vernünftiger Qualität problem von oben
+- werte mit RGB Tests waren kompliziert und nicht immer einfach -- bessere und auch mathematische herleitung gibt HSV da Hue Bereiche klar definiert sind einfachere handhabung deshalb änderung. Ebenso viel robuster gegen Lichtverhältnisse und  Keine komplexen Vergleiche wie if r > b and g > b, sondern klare Hue-Grenzen. Siehe: https://www.researchgate.net/publication/228895050_HSV-based_Color_Texture_Image_Classification_using_Wavelet_Transform_and_Motif_Patterns
+	Achtung bei HSV Farbkreis rot kommt am Anfang und am Ende deswegen braucht man dafür zwei definierte Zonen siehe Bild auf: https://wisotop.de/hsv-und-hsl-farbmodell.php und: Achtung: OpenCV speichert HSV mit H-Werten zwischen 0-179!
+																																																				Das heißt:
+
+																																																				0° – 10° wird zu 0 – 5 in OpenCV
+																																																				350° – 360° wird zu 175 – 179 in OpenCV
 
 Meine Anforderungen:
 - Modularer klar strukturierter Aufbau das jede Funktion auch eine eigene Methode hat die aufgerufen werden kann aber chronologisch gut funktioniert
