@@ -5,15 +5,15 @@ import numpy as np
 # Lese das Bild input.png ein
 # input_image = cv.imread("./BooksOnTable/IMG_20180103_151716_selection.jpg") # Dino Book
 # input_image = cv.imread("./UI/9439808be83adceb.jpg")
-input_image = cv.imread("./UIHD/doorerrorshrinked.bmp") # Door Error
+input_image = cv.imread("./UIHD/doorerror.bmp") # Door Error
 # input_image = cv.imread("./starry_night_test/starry_night_picture.jpg") # Starry Night Picture
 
 
 # Lese das Bild IMG ein
 # img = cv.imread("./BooksOnTable/IMG_20180103_151710.jpg") # Dino Book
 # img = cv.imread("./UI/5eb9e7ba88e3f5e9.jpg")
-# img = cv.imread("./UIHD/doorerror.bmp") # Door Error
-img = cv.imread("./UI/9199efcdd2e196ff.jpg") # Door Error lowquality
+img = cv.imread("./UIHD/doorerrorshrinked.bmp") # Door Error
+# img = cv.imread("./UI/9199efcdd2e196ff.jpg") # Door Error lowquality
 # img = cv.imread("./starry_night_test/starry_night_gallery.jpg") # Starry Night Gallery
 
 # Überprüfen, ob beide Bilder erfolgreich geladen wurden
