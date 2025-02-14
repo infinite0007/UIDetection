@@ -10,25 +10,65 @@ def read_image(path):
         sys.exit(f"Could not read the image at {path}.")
     return img
 
+import cv2 as cv
+import numpy as np
+
+# Lade das Bild
+image_path = "/mnt/data/db89d97d30860bd8.jpg"
+image = cv.imread(image_path)
+
 def detect_display_area(img, target_size):
     """
-    Ermittelt das viereckige UI im Bild und skaliert es auf die tatsächliche Display-Größe.
+    Ermittelt das UI-Display im Bild anhand nicht-schwarzer Pixel und skaliert es auf die tatsächliche Display-Größe.
+    Falls das Display schräg aufgenommen wurde, wird eine Perspektivtransformation (Shearing) angewendet.
     """
+
+    # Konvertiere das Bild in Graustufen und finde nicht-schwarze Bereiche
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    edges = cv.Canny(gray, 50, 150)
-    contours, _ = cv.findContours(edges, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    _, thresh = cv.threshold(gray, 30, 255, cv.THRESH_BINARY)  # Nur helle Bereiche behalten (ungleich Schwarz)
+
+    # Finde Konturen der nicht-schwarzen Bereiche
+    contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        return None  # Kein Display erkannt
+
+    # Größte Kontur basierend auf Fläche finden (größtes "nicht-schwarzes" Objekt)
+    largest_contour = max(contours, key=cv.contourArea)
+
+    # Verwende eine konvexe Hülle, um schräge Ecken zu erfassen
+    hull = cv.convexHull(largest_contour)
     
-    for contour in contours:
-        epsilon = 0.02 * cv.arcLength(contour, True)
-        approx = cv.approxPolyDP(contour, epsilon, True)
-        if len(approx) == 4:  # Suche nach Vierecken
-            x, y, w, h = cv.boundingRect(approx)
-            if w > 50 and h > 50:  # Filter für Größe
-                display_img = img[y:y+h, x:x+w]
-                # **Hier sicherstellen, dass es proportional auf 320x240 skaliert wird**
-                display_img = cv.resize(display_img, target_size, interpolation=cv.INTER_AREA)
-                return display_img
-    return None
+    # Approximiere eine Vierecksform, falls möglich
+    epsilon = 0.02 * cv.arcLength(hull, True)
+    approx = cv.approxPolyDP(hull, epsilon, True)
+
+    if len(approx) != 4:
+        return None  # Falls kein klares Viereck gefunden wird, kann keine Perspektivkorrektur erfolgen
+
+    # Sortiere die 4 Punkte in einer bestimmten Reihenfolge: [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
+    approx = sorted(approx[:, 0], key=lambda p: (p[1], p[0]))  # Sortiere zuerst nach y, dann nach x
+    if approx[0][0] > approx[1][0]:  # Sortiere links/rechts oben
+        approx[0], approx[1] = approx[1], approx[0]
+    if approx[2][0] < approx[3][0]:  # Sortiere links/rechts unten
+        approx[2], approx[3] = approx[3], approx[2]
+
+    # Zielpunkte für die Perspektivtransformation (rechteckiges Zielbild)
+    dst_pts = np.array([
+        [0, 0],  # Top Left
+        [target_size[0], 0],  # Top Right
+        [target_size[0], target_size[1]],  # Bottom Right
+        [0, target_size[1]]  # Bottom Left
+    ], dtype=np.float32)
+
+    # Transformationsmatrix berechnen
+    src_pts = np.array(approx, dtype=np.float32)
+    M = cv.getPerspectiveTransform(src_pts, dst_pts)
+
+    # Perspektivtransformation anwenden
+    warped = cv.warpPerspective(img, M, target_size)
+
+    return warped
 
 def analyze_colors(image):
     """
@@ -160,7 +200,7 @@ def check_image_presence(input_img, template_img, min_matches=5):
 
 # Hauptprogramm
 if __name__ == "__main__":
-    input_image_path = "./UIHD/Test.png"
+    input_image_path = "./UIHD/doorerrorshrinked.bmp"
     template_image_path = "./UIHD/090.bmp"
     
     # 1. Bild einlesen
