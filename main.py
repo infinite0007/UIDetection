@@ -95,7 +95,7 @@ def calibrate_display(img):
         save_display_corners(None, use_full_image=True)
         print("Keine Display-Ecken erkannt. Verwende Originalbild.")
 
-def optimize_image(img, target_size=(320, 240)):
+def rectify_display_image(img, target_size=(320, 240)):
     """
     Lädt die Kalibrierungsdaten (Ecken / use_full_image) aus JSON und
     führt die Transformation nur aus, wenn Ecken vorhanden sind.
@@ -108,18 +108,22 @@ def optimize_image(img, target_size=(320, 240)):
     # Ansonsten Transformation anwenden
     return apply_perspective_transform(img, corners, target_size)
 
-def analyze_colors(image):
+def analyze_colors(img):
     """
     Analysiert die Anzahl der Pixel pro Farbe (B, G, R, Schwarz, Weiß).
     """
-    hsv_image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+    hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV)
     black_tolerance = 30
     white_tolerance = 220
-    color_counts = {}
+    
+    # Alle möglichen Farbnamen vorab mit 0 initialisieren
+    color_names = ["black", "white", "red", "yellow", "green", "cyan", "blue", "magenta", "unknown"]
+    color_counts = {name: 0 for name in color_names}
 
     for row in hsv_image:
         for pixel in row:
             h, s, v = pixel
+
             if v < black_tolerance:
                 color_name = "black"
             elif v > white_tolerance and s < 30:
@@ -140,20 +144,20 @@ def analyze_colors(image):
                 else:
                     color_name = "unknown"
 
-            color_counts[color_name] = color_counts.get(color_name, 0) + 1
+            color_counts[color_name] += 1
 
     return color_counts
 
-def calculate_histograms(image):
+def calculate_histograms(img):
     """
     Berechnet die Histogramme für die Farbkanäle Rot, Grün, Blau.
     """
-    hist_r = cv.calcHist([image], [2], None, [256], [0, 256])  # Rot
-    hist_g = cv.calcHist([image], [1], None, [256], [0, 256])  # Grün
-    hist_b = cv.calcHist([image], [0], None, [256], [0, 256])  # Blau
+    hist_r = cv.calcHist([img], [2], None, [256], [0, 256])  # Rot
+    hist_g = cv.calcHist([img], [1], None, [256], [0, 256])  # Grün
+    hist_b = cv.calcHist([img], [0], None, [256], [0, 256])  # Blau
     return hist_r, hist_g, hist_b
 
-def perform_ocr(img):
+def get_ocr_text(img):
     """
     Führt OCR auf dem Bild durch und gibt den erkannten Text zurück.
     """
@@ -161,7 +165,7 @@ def perform_ocr(img):
     results = reader.readtext(img, detail=0)
     return ' '.join(results).strip()
 
-def test_string_in_ocr(ocr_text, test_string):
+def is_substring_in_string(ocr_text, test_string):
     """
     Prüft, ob ein gegebener Test-String im OCR-Ergebnis enthalten ist.
     """
@@ -217,17 +221,17 @@ if __name__ == "__main__":
     # 1. Bild einlesen
     input_image = read_image(input_image_path)
 
-    # 2. Kalibrierung einmalig
+    # 2. Kalibrierung einmalig - Finde das größte, deutlichste Polygon mit 4 Kanten --> Vier/Rechteck
     calibrate_display(input_image)
 
-    # 3. Beliebig viele Bilder "optimieren": Hier testweise dasselbe Bild
-    ui_display = optimize_image(input_image, target_size=(320, 240))
+    # 3. Beliebig viele Bilder zu kalibrierter Form gebracht --> Wird den Displaymaßen entsprechend skaliert, gezogen
+    ui_display = rectify_display_image(input_image, target_size=(320, 240))
 
     # Farbanalyse
     pixel_stats = analyze_colors(ui_display)
     print("Pixelanzahl pro Farbe:")
     for color, count in pixel_stats.items():
-        print(f"{color.capitalize()}: {count}")
+        print(f"{color}: {count}")
 
     # Zeige das evtl. erkannte UI-Bild
     cv.imshow("Optimized UI-Display", ui_display)
@@ -235,11 +239,11 @@ if __name__ == "__main__":
     cv.destroyAllWindows()
 
     # 4. OCR
-    detected_text = perform_ocr(ui_display)
+    detected_text = get_ocr_text(ui_display)
     print("\nDetected Text:", detected_text)
 
     test_string = "alarm"
-    is_string_present = test_string_in_ocr(detected_text, test_string)
+    is_string_present = is_substring_in_string(detected_text, test_string)
     print(f"\nIs '{test_string}' in OCR text? {is_string_present}")
 
     # 5. Bildvergleich
