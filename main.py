@@ -1,7 +1,11 @@
+# main.py
 import cv2 as cv
 import numpy as np
-import easyocr # https://github.com/jaidedai/easyocr
+import easyocr  # https://github.com/jaidedai/easyocr
 import sys
+
+# Import der JSON-Funktionen aus dem neuen Skript
+from display_manager import save_display_corners, load_display_corners
 
 def read_image(path):
     """Liest ein Bild ein, ohne es zu skalieren."""
@@ -10,89 +14,117 @@ def read_image(path):
         sys.exit(f"Could not read the image at {path}.")
     return img
 
-import cv2 as cv
-import numpy as np
-
-# Lade das Bild
-image_path = "/mnt/data/db89d97d30860bd8.jpg"
-image = cv.imread(image_path)
-
-def detect_display_area(img, target_size):
-    """
-    Ermittelt das UI-Display im Bild anhand nicht-schwarzer Pixel und skaliert es auf die tatsächliche Display-Größe.
-    Falls das Display schräg aufgenommen wurde, wird eine Perspektivtransformation (Shearing) angewendet.
-    """
-
-    # Konvertiere das Bild in Graustufen und finde nicht-schwarze Bereiche
+def detect_display_corners(img, canny_thresh1=50, canny_thresh2=150, approx_factor=0.007):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    _, thresh = cv.threshold(gray, 30, 255, cv.THRESH_BINARY)  # Nur helle Bereiche behalten (ungleich Schwarz)
+    edges = cv.Canny(gray, canny_thresh1, canny_thresh2)
 
-    # Finde Konturen der nicht-schwarzen Bereiche
-    contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    # Kanten "verbreitern"
+    kernel = np.ones((2, 2), np.uint8)
+    edges = cv.dilate(edges, kernel, iterations=1)
 
+    cv.imshow("Canny After Morphology", edges)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
+    contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     if not contours:
-        return None  # Kein Display erkannt
+        return None
 
-    # Größte Kontur basierend auf Fläche finden (größtes "nicht-schwarzes" Objekt)
-    largest_contour = max(contours, key=cv.contourArea)
+    best_approx = None
+    best_area = 0
 
-    # Verwende eine konvexe Hülle, um schräge Ecken zu erfassen
-    hull = cv.convexHull(largest_contour)
-    
-    # Approximiere eine Vierecksform, falls möglich
-    epsilon = 0.02 * cv.arcLength(hull, True)
-    approx = cv.approxPolyDP(hull, epsilon, True)
+    # Definiere eine Mindestfläche, z.B. 2000
+    min_area = 2000
 
-    if len(approx) != 4:
-        return None  # Falls kein klares Viereck gefunden wird, kann keine Perspektivkorrektur erfolgen
+    for cnt in contours:
+        perimeter = cv.arcLength(cnt, True)
+        if perimeter < 10:
+            continue
+        epsilon = approx_factor * perimeter
+        approx = cv.approxPolyDP(cnt, epsilon, True)
 
-    # Sortiere die 4 Punkte in einer bestimmten Reihenfolge: [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
-    approx = sorted(approx[:, 0], key=lambda p: (p[1], p[0]))  # Sortiere zuerst nach y, dann nach x
-    if approx[0][0] > approx[1][0]:  # Sortiere links/rechts oben
-        approx[0], approx[1] = approx[1], approx[0]
-    if approx[2][0] < approx[3][0]:  # Sortiere links/rechts unten
-        approx[2], approx[3] = approx[3], approx[2]
+        if len(approx) == 4:
+            area = cv.contourArea(approx)
+            # Neu: Ignoriere zu kleine Vierecke
+            if area < min_area:
+                continue
 
-    # Zielpunkte für die Perspektivtransformation (rechteckiges Zielbild)
+            # Wenn groß genug, checken wir, ob es das größte ist
+            if area > best_area:
+                best_area = area
+                best_approx = approx
+
+    if best_approx is None:
+        return None
+
+    # Sortieren [TL, TR, BR, BL]
+    corners = sorted(best_approx[:, 0], key=lambda p: (p[1], p[0]))
+    if corners[0][0] > corners[1][0]:
+        corners[0], corners[1] = corners[1], corners[0]
+    if corners[2][0] < corners[3][0]:
+        corners[2], corners[3] = corners[3], corners[2]
+
+    return np.array(corners, dtype=np.float32)
+
+def apply_perspective_transform(img, corners, target_size):
+    """
+    Wendet eine Perspektivtransformation anhand gegebener Ecken auf das Bild an.
+    Gibt das transformierte Bild mit Größe target_size zurück.
+    """
     dst_pts = np.array([
-        [0, 0],  # Top Left
-        [target_size[0], 0],  # Top Right
-        [target_size[0], target_size[1]],  # Bottom Right
-        [0, target_size[1]]  # Bottom Left
+        [0, 0],                # Top Left
+        [target_size[0], 0],   # Top Right
+        [target_size[0], target_size[1]],   # Bottom Right
+        [0, target_size[1]]    # Bottom Left
     ], dtype=np.float32)
 
-    # Transformationsmatrix berechnen
-    src_pts = np.array(approx, dtype=np.float32)
-    M = cv.getPerspectiveTransform(src_pts, dst_pts)
-
-    # Perspektivtransformation anwenden
+    M = cv.getPerspectiveTransform(corners, dst_pts)
     warped = cv.warpPerspective(img, M, target_size)
-
     return warped
+
+def calibrate_display(img):
+    """
+    Sucht die Display-Ecken im Bild und speichert sie per JSON.
+    Falls kein Display gefunden wird, wird use_full_image=True gespeichert.
+    """
+    corners = detect_display_corners(img)
+    if corners is not None:
+        save_display_corners(corners, use_full_image=False)
+        print("Kalibrierung erfolgreich. Display-Ecken erkannt und gespeichert.")
+    else:
+        save_display_corners(None, use_full_image=True)
+        print("Keine Display-Ecken erkannt. Verwende Originalbild.")
+
+def optimize_image(img, target_size=(320, 240)):
+    """
+    Lädt die Kalibrierungsdaten (Ecken / use_full_image) aus JSON und
+    führt die Transformation nur aus, wenn Ecken vorhanden sind.
+    Ansonsten wird das Bild unverändert zurückgegeben.
+    """
+    corners, use_full_image = load_display_corners()
+    # Prüfen, ob use_full_image oder corners fehlerhaft
+    if use_full_image or corners is None or len(corners) != 4:
+        return img
+    # Ansonsten Transformation anwenden
+    return apply_perspective_transform(img, corners, target_size)
 
 def analyze_colors(image):
     """
     Analysiert die Anzahl der Pixel pro Farbe (B, G, R, Schwarz, Weiß).
     """
-    # Bild in HSV umwandeln
     hsv_image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-
-    black_tolerance=30
+    black_tolerance = 30
     white_tolerance = 220
     color_counts = {}
 
-    for row in hsv_image:  # Iteriere durch alle Pixelzeilen
-        for pixel in row:  # Iteriere durch alle Pixel in der Zeile
-            h, s, v = pixel  # Hue, Saturation, Value
-
-            # Schwarz-Erkennung (niedrige Helligkeit)
+    for row in hsv_image:
+        for pixel in row:
+            h, s, v = pixel
             if v < black_tolerance:
                 color_name = "black"
-            # Weiß-Erkennung (hohe Helligkeit + niedrige Sättigung)
             elif v > white_tolerance and s < 30:
                 color_name = "white"
             else:
-                # **Farberkennung über den Hue-Wert**
                 if (0 <= h <= 15) or (165 <= h <= 179):
                     color_name = "red"
                 elif 15 < h <= 45:
@@ -108,36 +140,26 @@ def analyze_colors(image):
                 else:
                     color_name = "unknown"
 
-            # Zähle die Farbe -> nur wenn auch gegeben
-            if color_name not in color_counts:
-                color_counts[color_name] = 0
-            color_counts[color_name] += 1
+            color_counts[color_name] = color_counts.get(color_name, 0) + 1
 
     return color_counts
 
 def calculate_histograms(image):
     """
-    Berechnet die Histogramme für die Farbkanäle Rot, Grün, Blau -> RGB ist hier besser für Histogramme, da es die Pixelintensitäten direkt zeigt, anstatt Farbtonänderungen (Hue).
-
-    Ein Histogramm zeigt, wie viele Pixel einen bestimmten Farbwert haben (0-255).
-    Es hilft zu erkennen:
-    - Welche Farben dominant sind.
-    - Ob das Bild eher dunkel oder hell ist.
-    - Wie sich Farben über das gesamte Bild verteilen.
+    Berechnet die Histogramme für die Farbkanäle Rot, Grün, Blau.
     """
-    hist_r = cv.calcHist([image], [2], None, [256], [0, 256]) # Rot
-    hist_g = cv.calcHist([image], [1], None, [256], [0, 256]) # Grün
-    hist_b = cv.calcHist([image], [0], None, [256], [0, 256]) # Blau
-
-    return hist_r, hist_g, hist_b,  
+    hist_r = cv.calcHist([image], [2], None, [256], [0, 256])  # Rot
+    hist_g = cv.calcHist([image], [1], None, [256], [0, 256])  # Grün
+    hist_b = cv.calcHist([image], [0], None, [256], [0, 256])  # Blau
+    return hist_r, hist_g, hist_b
 
 def perform_ocr(img):
     """
     Führt OCR auf dem Bild durch und gibt den erkannten Text zurück.
     """
-    reader = easyocr.Reader(['en'], gpu=False)  # CPU oder GPU --> wäre schneller aber Cuda/MPS erforderlich
-    results = reader.readtext(img, detail=0)  # Detail=0 gibt nur den erkannten Text zurück
-    return ' '.join(results).strip()  # Kombiniert die Texte in einen String
+    reader = easyocr.Reader(['en','de'], gpu=False) # https://github.com/JaidedAI/EasyOCR/tree/master/easyocr/character / https://github.com/JaidedAI/EasyOCR/tree/master/easyocr/dict
+    results = reader.readtext(img, detail=0)
+    return ' '.join(results).strip()
 
 def test_string_in_ocr(ocr_text, test_string):
     """
@@ -147,106 +169,82 @@ def test_string_in_ocr(ocr_text, test_string):
 
 def check_image_presence(input_img, template_img, min_matches=5):
     """
-    Prüft, ob ein gegebenes Bild ein Teil des Eingabebildes ist und gibt die Position zurück.
+    Prüft, ob ein gegebenes Bild Teil des Eingabebildes ist,
+    indem es BRISK-Features miteinander vergleicht.
+    Gibt True/False + Anzahl der Matches zurück.
+    Zeigt außerdem das Matching-Bild an.
     """
+
     gray_input = cv.cvtColor(input_img, cv.COLOR_BGR2GRAY)
     gray_template = cv.cvtColor(template_img, cv.COLOR_BGR2GRAY)
-    
-    # BRISK Feature Detection
+
     brisk = cv.BRISK_create()
     kp1, des1 = brisk.detectAndCompute(gray_input, None)
     kp2, des2 = brisk.detectAndCompute(gray_template, None)
-    
-    if des1 is None or des2 is None:
-        return False, 0, None
 
-    # Matcher und Homographie
+    if des1 is None or des2 is None:
+        return False, 0
+
     bf = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
     matches = bf.match(des1, des2)
     matches = sorted(matches, key=lambda x: x.distance)
 
     if len(matches) < min_matches:
-        return False, len(matches), None
+        return False, len(matches)
 
-    # Berechnung der Homographie mit RANSAC
-    src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-    dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+    # Nur zur besseren Visualisierung: wir zeigen die Matches
+    match_img = cv.drawMatches(
+        gray_input, kp1,
+        gray_template, kp2,
+        matches, None,
+        matchColor=(0, 255, 0),
+        singlePointColor=(0, 0, 255),
+        flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+    )
 
-    """
-    Die Homographie ist eine Transformation, die beschreibt, wie ein Bild in ein anderes überführt werden kann.
-    Sie wird als Matrix dargestellt und kann verwendet werden, um Punkte von einem Bild in das andere zu
-    projizieren. Das ist nützlich, um herauszufinden, ob ein Teilbild (wie eine Vorlage)
-    im größeren Bild enthalten ist und wo es sich genau befindet.
-    """
-    M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
-    if M is None:
-        return False, len(matches), None
-    
-    # Visualisierung der Matches
-    matches_mask = mask.ravel().tolist()
-    good_matches = [m for i, m in enumerate(matches) if matches_mask[i]]
-
-    match_img = cv.drawMatches(gray_input, kp1, gray_template, kp2, good_matches, None, 
-                               matchColor=(0, 255, 0), singlePointColor=(0, 0, 255), 
-                               flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-    # Zeige das Bild mit den Matches
     cv.imshow("Feature Matches", match_img)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-    # Gibt die Transformationsmatrix und Position zurück
-    return True, len(matches), M
+    return True, len(matches)
 
-# Hauptprogramm
+
+# Beispiel-Hauptprogramm
 if __name__ == "__main__":
     input_image_path = "./UIHD/doorerrorshrinked.bmp"
     template_image_path = "./UIHD/090.bmp"
-    
+
     # 1. Bild einlesen
     input_image = read_image(input_image_path)
-    
-    # 2. UI-Display erkennen und auf echte Größe skalieren aktuell: (320x240)
-    ui_display = detect_display_area(input_image, target_size=(320, 240))
-    if ui_display is None:
-        sys.exit("UI Display not detected.")
-    
-    # Analysiere Farben
-    pixel_stats = analyze_colors(ui_display)
-    
-    # Histogramme berechnen
-    # hist_r, hist_g, hist_b  = calculate_histograms(ui_display)
 
-    # Ergebnisse anzeigen
+    # 2. Kalibrierung einmalig
+    calibrate_display(input_image)
+
+    # 3. Beliebig viele Bilder "optimieren": Hier testweise dasselbe Bild
+    ui_display = optimize_image(input_image, target_size=(320, 240))
+
+    # Farbanalyse
+    pixel_stats = analyze_colors(ui_display)
     print("Pixelanzahl pro Farbe:")
     for color, count in pixel_stats.items():
         print(f"{color.capitalize()}: {count}")
 
-    # Zeige das erkannte UI-Bild
-    cv.imshow("Image", ui_display)
+    # Zeige das evtl. erkannte UI-Bild
+    cv.imshow("Optimized UI-Display", ui_display)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-    # # Optional: Histogramm anzeigen
-    # print("\nHistogramme der Farbkanäle:")
-    # print("Intensität | Rot | Grün | Blau")
-    # for i in range(256):
-    #     print(f"{i:10} | {int(hist_r[i][0]):4} | {int(hist_g[i][0]):4} | {int(hist_b[i][0]):4}")
-
-    # 4. OCR ausführen
+    # 4. OCR
     detected_text = perform_ocr(ui_display)
     print("\nDetected Text:", detected_text)
-    
-    # Prüfen, ob ein Test-String im OCR-Ergebnis vorhanden ist
+
     test_string = "alarm"
     is_string_present = test_string_in_ocr(detected_text, test_string)
     print(f"\nIs '{test_string}' in OCR text? {is_string_present}")
-    
+
     # 5. Bildvergleich
     template_image = read_image(template_image_path)
-    is_present, num_matches, homography = check_image_presence(ui_display, template_image)
-    
+    is_present, num_matches = check_image_presence(ui_display, template_image)
+
     print("\nTemplate Found:", is_present)
     print("Number of Matches:", num_matches)
-    if is_present:
-        print("Homography Matrix:", homography)
