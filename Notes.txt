@@ -18,6 +18,7 @@ Probleme:
 
 																																																				0° – 10° wird zu 0 – 5 in OpenCV
 																																																				350° – 360° wird zu 175 – 179 in OpenCV
+- Wenn kein Display erkannt wird bei der kalibrierung welche ungleich schwarze pixel anzeigt da ja im dunkeln keine ecken wenn das display schwarz ist anzeigt bzw erkannt werden kann soll ein error zurück gegeben werden und anstelle eckpunkte dann spezifischer flag abgespeichert werden was dann zukünftige aufrufe dazu verleitet das ganze bild zu nehmen ohne rücksicht auf displays usw.. zb count color mit ganzen übergebenem Bild --> Mit Canny Kantenerkennung für rechteck (Polygonapproximation) waren die ergebnisse am besten. explizit nach Kanten (starken Helligkeitsübergängen) via cv.Canny, statt nach der größten hellen Fläche.
 
 Meine Anforderungen:
 - Modularer klar strukturierter Aufbau das jede Funktion auch eine eigene Methode hat die aufgerufen werden kann aber chronologisch gut funktioniert
