@@ -173,50 +173,65 @@ def is_substring_in_string(ocr_text, test_string):
 
 def check_image_presence(input_img, template_img, min_matches=5):
     """
-    Prüft, ob ein gegebenes Bild Teil des Eingabebildes ist,
-    indem es BRISK-Features miteinander vergleicht.
-    Gibt True/False + Anzahl der Matches zurück.
-    Zeigt außerdem das Matching-Bild an.
+    Prüft, ob ein gegebenes Icon im UI-Bild enthalten ist,
+    indem SIFT + FLANN Feature-Matching verwendet wird.
+    
+    - min_matches: Minimale Anzahl an Matches, um ein Icon als "gefunden" zu werten.
+    
+    Rückgabe:
+      - True/False, Anzahl der Matches
     """
 
+    # 1. Graustufenbilder erstellen
     gray_input = cv.cvtColor(input_img, cv.COLOR_BGR2GRAY)
     gray_template = cv.cvtColor(template_img, cv.COLOR_BGR2GRAY)
 
-    brisk = cv.BRISK_create()
-    kp1, des1 = brisk.detectAndCompute(gray_input, None)
-    kp2, des2 = brisk.detectAndCompute(gray_template, None)
+    # 2. SIFT-Feature-Detektor & Deskriptor erstellen
+    sift = cv.SIFT_create()
+    kp1, des1 = sift.detectAndCompute(gray_input, None)
+    kp2, des2 = sift.detectAndCompute(gray_template, None)
 
     if des1 is None or des2 is None:
-        return False, 0
+        return False, 0  # Keine Features gefunden
 
-    bf = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
-    matches = bf.match(des1, des2)
-    matches = sorted(matches, key=lambda x: x.distance)
+    # 3. FLANN Matcher initialisieren (besser als Brute-Force für große Feature-Sätze)
+    index_params = dict(algorithm=1, trees=5)  # KD-Tree für SIFT
+    search_params = dict(checks=50)  # Anzahl der Suchversuche
+    flann = cv.FlannBasedMatcher(index_params, search_params)
 
-    if len(matches) < min_matches:
-        return False, len(matches)
+    matches = flann.knnMatch(des1, des2, k=2)  # KNN-Feature-Matching
 
-    # Nur zur besseren Visualisierung: wir zeigen die Matches
+    # 4. Lowe’s Ratio Test (um schlechte Matches zu entfernen)
+    good_matches = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:  # Niedrigere Distanz = besserer Match
+            good_matches.append(m)
+
+    # 5. Überprüfung, ob genügend Matches vorhanden sind
+    if len(good_matches) < min_matches:
+        return False, len(good_matches)
+
+    # 6. Visualisierung der Matches
     match_img = cv.drawMatches(
         gray_input, kp1,
         gray_template, kp2,
-        matches, None,
+        good_matches, None,
         matchColor=(0, 255, 0),
         singlePointColor=(0, 0, 255),
         flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
     )
 
-    cv.imshow("Feature Matches", match_img)
+    cv.imshow("SIFT Matches", match_img)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-    return True, len(matches)
+    return True, len(good_matches)
 
 
 # Beispiel-Hauptprogramm
 if __name__ == "__main__":
-    input_image_path = "./UIHD/doorerrorshrinked.bmp"
-    template_image_path = "./UIHD/090.bmp"
+    input_image_path = "./UIHD/settingslogi.jpg"
+    template_image_path = "./UIHD/071.bmp"
 
     # 1. Bild einlesen
     input_image = read_image(input_image_path)
@@ -248,7 +263,9 @@ if __name__ == "__main__":
 
     # 5. Bildvergleich
     template_image = read_image(template_image_path)
-    is_present, num_matches = check_image_presence(ui_display, template_image)
+    is_present, num_matches = check_image_presence(ui_display, template_image, min_matches=0)
 
-    print("\nTemplate Found:", is_present)
-    print("Number of Matches:", num_matches)
+    if is_present:
+        print(f"[OK] Icon gefunden mit {num_matches} Matches.")
+    else:
+        print(f"[FAIL] Icon nicht gefunden ({num_matches} Matches).")
