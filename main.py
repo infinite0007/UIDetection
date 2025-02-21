@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np
 import easyocr  # https://github.com/jaidedai/easyocr
 import sys
+import imutils
 
 # Import der JSON-Funktionen aus dem neuen Skript
 from display_manager import save_display_corners, load_display_corners
@@ -171,52 +172,74 @@ def is_substring_in_string(ocr_text, test_string):
     """
     return test_string.lower() in ocr_text.lower()
 
-def check_image_presence(input_img, template_img, min_matches=5):
+def find_icon_multiscale(ui_img, icon_img, scale_range=(0.1, 2.5), step=20, threshold=0.1):
     """
-    Prüft, ob ein gegebenes Bild Teil des Eingabebildes ist,
-    indem es BRISK-Features miteinander vergleicht.
-    Gibt True/False + Anzahl der Matches zurück.
-    Zeigt außerdem das Matching-Bild an.
+    Multi-Scale Template Matching zum Finden eines Icons auf einem UI-Display.
+    
+    - ui_img: Kameraaufnahme des UI-Displays
+    - icon_img: Das gesuchte Icon als BMP-Datei (Schwarzes Icon auf Weiß)
+    - scale_range: Tuple (min_scale, max_scale), in welchem Bereich das Icon skaliert wird
+    - step: Anzahl der Skalierungsschritte
+    - threshold: Ähnlichkeitsschwelle für das Matching (0.8 = 80%)
+    
+    Rückgabe:
+      - True/False, Position des Icons (falls erkannt)
     """
 
-    gray_input = cv.cvtColor(input_img, cv.COLOR_BGR2GRAY)
-    gray_template = cv.cvtColor(template_img, cv.COLOR_BGR2GRAY)
+    # Schritt 1: Umwandlung in Graustufen und Kantenextraktion (Canny)
+    gray_ui = cv.cvtColor(ui_img, cv.COLOR_BGR2GRAY)
+    gray_icon = cv.cvtColor(icon_img, cv.COLOR_BGR2GRAY)
 
-    brisk = cv.BRISK_create()
-    kp1, des1 = brisk.detectAndCompute(gray_input, None)
-    kp2, des2 = brisk.detectAndCompute(gray_template, None)
+    edged_icon = cv.Canny(gray_icon, 50, 200)  # Kanten für bessere Erkennung
+    (tH, tW) = edged_icon.shape[:2]  # Höhe und Breite des Icons
 
-    if des1 is None or des2 is None:
-        return False, 0
+    best_match = None  # Bestes Match speichern
+    found = None  # Beste Position speichern
 
-    bf = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
-    matches = bf.match(des1, des2)
-    matches = sorted(matches, key=lambda x: x.distance)
+    # Schritt 2: Skaliere das Icon und suche auf dem UI
+    for scale in np.linspace(scale_range[0], scale_range[1], step)[::-1]:
+        resized_icon = imutils.resize(edged_icon, width=int(tW * scale))  # Skaliertes Icon
+        r = tW / float(resized_icon.shape[1])  # Verhältnis für spätere Korrektur
 
-    if len(matches) < min_matches:
-        return False, len(matches)
+        if resized_icon.shape[0] > gray_ui.shape[0] or resized_icon.shape[1] > gray_ui.shape[1]:
+            continue  # Falls das Icon größer als das UI ist → überspringen
 
-    # Nur zur besseren Visualisierung: wir zeigen die Matches
-    match_img = cv.drawMatches(
-        gray_input, kp1,
-        gray_template, kp2,
-        matches, None,
-        matchColor=(0, 255, 0),
-        singlePointColor=(0, 0, 255),
-        flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
-    )
+        # Kanten des UI ebenfalls extrahieren
+        edged_ui = cv.Canny(gray_ui, 50, 200)
 
-    cv.imshow("Feature Matches", match_img)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+        # Template Matching auf aktuellem UI
+        result = cv.matchTemplate(edged_ui, resized_icon, cv.TM_CCOEFF_NORMED)
+        (_, max_val, _, max_loc) = cv.minMaxLoc(result)
 
-    return True, len(matches)
+        # Falls ein besseres Match gefunden wurde, speichern
+        if found is None or max_val > found[0]:
+            found = (max_val, max_loc, r)
+
+    # Falls ein gutes Match gefunden wurde
+    if found and found[0] >= threshold:
+        max_val, max_loc, r = found
+        (startX, startY) = (int(max_loc[0] * r), int(max_loc[1] * r))
+        (endX, endY) = (int((max_loc[0] + tW) * r), int((max_loc[1] + tH) * r))
+
+        # Rechteck um das gefundene Icon zeichnen
+        cv.rectangle(ui_img, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+        # Gefundenes Icon anzeigen
+        cv.imshow("Erkanntes Icon", ui_img)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
+
+        print(f"✅ Icon gefunden an Position {max_loc} mit Score {max_val:.2f}")
+        return True, max_loc
+
+    print("❌ Icon nicht gefunden.")
+    return False, None
 
 
 # Beispiel-Hauptprogramm
 if __name__ == "__main__":
-    input_image_path = "./UIHD/doorerrorshrinked.bmp"
-    template_image_path = "./UIHD/090.bmp"
+    input_image_path = "./UIHD/settingslogi.jpg"
+    template_image_path = "./UIHD/071.bmp"
 
     # 1. Bild einlesen
     input_image = read_image(input_image_path)
@@ -248,7 +271,9 @@ if __name__ == "__main__":
 
     # 5. Bildvergleich
     template_image = read_image(template_image_path)
-    is_present, num_matches = check_image_presence(ui_display, template_image)
+    is_present, position = find_icon_multiscale(ui_display, template_image)
 
-    print("\nTemplate Found:", is_present)
-    print("Number of Matches:", num_matches)
+    if is_present:
+        print(f"[OK] Icon gefunden an Position: {position}")
+    else:
+        print("[FAIL] Icon nicht auf dem UI gefunden.")
