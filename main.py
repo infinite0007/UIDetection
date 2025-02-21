@@ -172,69 +172,75 @@ def is_substring_in_string(ocr_text, test_string):
     """
     return test_string.lower() in ocr_text.lower()
 
-def find_icon_multiscale(ui_img, icon_img, scale_range=(0.1, 2.5), step=20, threshold=0.1):
-    """
-    Multi-Scale Template Matching zum Finden eines Icons auf einem UI-Display.
+def isIconInImage(ui_image, icon, visualize=False, debug=False, match_threshold=0.8):
+    # Konvertiere das Icon (Template) in Graustufen und berechne den Canny-Kantenausgang durch die Methode der: Multi-Scale Template Matching siehe details: https://pyimagesearch.com/2015/01/26/multi-scale-template-matching-using-python-opencv/
+    template_gray = cv.cvtColor(icon, cv.COLOR_BGR2GRAY)
+    template_edges = cv.Canny(template_gray, 50, 200)
     
-    - ui_img: Kameraaufnahme des UI-Displays
-    - icon_img: Das gesuchte Icon als BMP-Datei (Schwarzes Icon auf Weiß)
-    - scale_range: Tuple (min_scale, max_scale), in welchem Bereich das Icon skaliert wird
-    - step: Anzahl der Skalierungsschritte
-    - threshold: Ähnlichkeitsschwelle für das Matching (0.8 = 80%)
-    
-    Rückgabe:
-      - True/False, Position des Icons (falls erkannt)
-    """
-
-    # Schritt 1: Umwandlung in Graustufen und Kantenextraktion (Canny)
-    gray_ui = cv.cvtColor(ui_img, cv.COLOR_BGR2GRAY)
-    gray_icon = cv.cvtColor(icon_img, cv.COLOR_BGR2GRAY)
-
-    edged_icon = cv.Canny(gray_icon, 50, 200)  # Kanten für bessere Erkennung
-    (tH, tW) = edged_icon.shape[:2]  # Höhe und Breite des Icons
-
-    best_match = None  # Bestes Match speichern
-    found = None  # Beste Position speichern
-
-    # Schritt 2: Skaliere das Icon und suche auf dem UI
-    for scale in np.linspace(scale_range[0], scale_range[1], step)[::-1]:
-        resized_icon = imutils.resize(edged_icon, width=int(tW * scale))  # Skaliertes Icon
-        r = tW / float(resized_icon.shape[1])  # Verhältnis für spätere Korrektur
-
-        if resized_icon.shape[0] > gray_ui.shape[0] or resized_icon.shape[1] > gray_ui.shape[1]:
-            continue  # Falls das Icon größer als das UI ist → überspringen
-
-        # Kanten des UI ebenfalls extrahieren
-        edged_ui = cv.Canny(gray_ui, 50, 200)
-
-        # Template Matching auf aktuellem UI
-        result = cv.matchTemplate(edged_ui, resized_icon, cv.TM_CCOEFF_NORMED)
-        (_, max_val, _, max_loc) = cv.minMaxLoc(result)
-
-        # Falls ein besseres Match gefunden wurde, speichern
-        if found is None or max_val > found[0]:
-            found = (max_val, max_loc, r)
-
-    # Falls ein gutes Match gefunden wurde
-    if found and found[0] >= threshold:
-        max_val, max_loc, r = found
-        (startX, startY) = (int(max_loc[0] * r), int(max_loc[1] * r))
-        (endX, endY) = (int((max_loc[0] + tW) * r), int((max_loc[1] + tH) * r))
-
-        # Rechteck um das gefundene Icon zeichnen
-        cv.rectangle(ui_img, (startX, startY), (endX, endY), (0, 255, 0), 2)
-
-        # Gefundenes Icon anzeigen
-        cv.imshow("Erkanntes Icon", ui_img)
+    if visualize:
+        cv.imshow("Icon - Kanten", template_edges)
         cv.waitKey(0)
-        cv.destroyAllWindows()
-
-        print(f"✅ Icon gefunden an Position {max_loc} mit Score {max_val:.2f}")
-        return True, max_loc
-
-    print("❌ Icon nicht gefunden.")
-    return False, None
-
+    
+    (tH, tW) = template_edges.shape[:2]
+    
+    # Konvertiere das UI-Bild in Graustufen
+    gray = cv.cvtColor(ui_image, cv.COLOR_BGR2GRAY)
+    
+    best_match = None  # (maxVal, maxLoc, r, scale, resized)
+    
+    # Durchlaufe mehrere Skalierungen (von 120% bis 20% der Breite in 60 Schritten umso mehr Schritte umso genauer - aber dafür zeit und rechenaufwendiger)
+    for scale in np.linspace(0.2, 1.2, 60)[::-1]:
+        resized = imutils.resize(gray, width=int(gray.shape[1] * scale))
+        r = gray.shape[1] / float(resized.shape[1])
+        
+        # Abbruch, wenn das verkleinerte Bild kleiner als das Template ist
+        if resized.shape[0] < tH or resized.shape[1] < tW:
+            if debug:
+                print(f"Skalierung {scale:.2f}: Bild zu klein (resized: {resized.shape[1]}x{resized.shape[0]}), Abbruch der Schleife.")
+            break
+        
+        edged = cv.Canny(resized, 50, 200)
+        result = cv.matchTemplate(edged, template_edges, cv.TM_CCOEFF_NORMED) #https://stackoverflow.com/questions/55469431/what-does-the-tm-ccorr-and-tm-ccoeff-in-opencv-mean or https://docs.opencv.org/3.4/de/da9/tutorial_template_matching.html
+        (_, maxVal, _, maxLoc) = cv.minMaxLoc(result)
+        
+        if debug:
+            print(f"Skalierung {scale:.2f} | maxVal: {maxVal:.2f} | maxLoc: {maxLoc}")
+        
+        if best_match is None or maxVal > best_match[0]:
+            best_match = (maxVal, maxLoc, r, scale, resized)
+        
+        if visualize:
+            clone = np.dstack([edged, edged, edged])
+            cv.rectangle(clone, maxLoc, (maxLoc[0] + tW, maxLoc[1] + tH), (0, 0, 255), 2)
+            cv.imshow("Visualisierung", clone)
+            cv.waitKey(500)
+    
+    # Auswertung des besten Treffers
+    if best_match is not None:
+        (maxVal, maxLoc, r, best_scale, best_resized) = best_match
+        # best_resized speichert das UI-Bild in der Skalierung, bei der der höchste Korrelationswert gefunden wurde - kann später nützlich sein
+        if debug:
+            print(f"\nBester Treffer bei Skalierung {best_scale:.2f} mit maxVal: {maxVal:.4f}")
+        
+        if maxVal >= match_threshold:
+            # Optional: Bounding Box im Originalbild zeichnen
+            (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
+            (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r))
+            if visualize:
+                output = ui_image.copy()
+                cv.rectangle(output, (startX, startY), (endX, endY), (0, 0, 255), 2)
+                cv.imshow("Match gefunden", output)
+                cv.waitKey(0)
+            # Rückgabe: Icon gefunden mit zugehörigem Korrelationswert
+            return True, maxVal
+        else:
+            if debug:
+                print("Übereinstimmung nicht ausreichend (maxVal unter dem Schwellenwert).")
+            return False, maxVal
+    else:
+        if debug:
+            print("Kein Treffer gefunden.")
+        return False, None
 
 # Beispiel-Hauptprogramm
 if __name__ == "__main__":
@@ -271,9 +277,5 @@ if __name__ == "__main__":
 
     # 5. Bildvergleich
     template_image = read_image(template_image_path)
-    is_present, position = find_icon_multiscale(ui_display, template_image)
-
-    if is_present:
-        print(f"[OK] Icon gefunden an Position: {position}")
-    else:
-        print("[FAIL] Icon nicht auf dem UI gefunden.")
+    found, probability = isIconInImage(ui_display, template_image, visualize=True, debug=True, match_threshold=0.5) # Wahrscheinlichkeit ab dem Bilder minimal noch als OK bewertet werden, bei manchen verschwommenen wird das benötigt, natürlich wird aber die höchste Wahrscheinlichekit gewertet
+    print(f"Wurde Icon gefunden?: {found} (Wahrscheinlichkeitswert: {probability})")
