@@ -172,10 +172,10 @@ def is_substring_in_string(ocr_text, test_string):
     """
     return test_string.lower() in ocr_text.lower()
 
-def isIconInImage(ui_image, icon, visualize=False, debug=False, match_threshold=0.8):
+def isIconInImage(ui_image, icon, visualize=False, debug=False, match_threshold=0.3): # Für unseren Fall hat sich 0.3 auch bei sehr pixligen Bildern gut bewährt.
     # Konvertiere das Icon (Template) in Graustufen und berechne den Canny-Kantenausgang durch die Methode der: Multi-Scale Template Matching siehe details: https://pyimagesearch.com/2015/01/26/multi-scale-template-matching-using-python-opencv/
     template_gray = cv.cvtColor(icon, cv.COLOR_BGR2GRAY)
-    template_edges = cv.Canny(template_gray, 50, 200)
+    template_edges = cv.Canny(template_gray, 70, 200)
     
     if visualize:
         cv.imshow("Icon - Kanten", template_edges)
@@ -188,8 +188,8 @@ def isIconInImage(ui_image, icon, visualize=False, debug=False, match_threshold=
     
     best_match = None  # (maxVal, maxLoc, r, scale, resized)
     
-    # Durchlaufe mehrere Skalierungen (von 120% bis 20% der Breite in 60 Schritten umso mehr Schritte umso genauer - aber dafür zeit und rechenaufwendiger)
-    for scale in np.linspace(0.2, 1.2, 60)[::-1]:
+    # Durchlaufe mehrere Skalierungen (von 100% bis 20% der Breite in 60 Schritten umso mehr Schritte umso genauer - aber dafür zeit und rechenaufwendiger)
+    for scale in np.linspace(0.2, 1.5, 50)[::-1]:
         resized = imutils.resize(gray, width=int(gray.shape[1] * scale))
         r = gray.shape[1] / float(resized.shape[1])
         
@@ -200,7 +200,7 @@ def isIconInImage(ui_image, icon, visualize=False, debug=False, match_threshold=
             break
         
         edged = cv.Canny(resized, 50, 200)
-        result = cv.matchTemplate(edged, template_edges, cv.TM_CCOEFF_NORMED) #https://stackoverflow.com/questions/55469431/what-does-the-tm-ccorr-and-tm-ccoeff-in-opencv-mean or https://docs.opencv.org/3.4/de/da9/tutorial_template_matching.html
+        result = cv.matchTemplate(edged, template_edges, cv.TM_CCOEFF_NORMED) # https://stackoverflow.com/questions/55469431/what-does-the-tm-ccorr-and-tm-ccoeff-in-opencv-mean or https://docs.opencv.org/3.4/de/da9/tutorial_template_matching.html Ist nicht die Prozentuale Chance sondern wie hoch der Koeffizient ist also wie gut das Bild zum Template passt --> hoher Wert ist eher wahrscheinlich
         (_, maxVal, _, maxLoc) = cv.minMaxLoc(result)
         
         if debug:
@@ -277,5 +277,5 @@ if __name__ == "__main__":
 
     # 5. Bildvergleich
     template_image = read_image(template_image_path)
-    found, probability = isIconInImage(ui_display, template_image, visualize=True, debug=True, match_threshold=0.5) # Wahrscheinlichkeit ab dem Bilder minimal noch als OK bewertet werden, bei manchen verschwommenen wird das benötigt, natürlich wird aber die höchste Wahrscheinlichekit gewertet
+    found, probability = isIconInImage(ui_display, template_image, visualize=True, debug=True, match_threshold=0.3) # Wahrscheinlichkeit ab dem Bilder minimal noch als OK bewertet werden, bei manchen verschwommenen wird das benötigt, natürlich wird aber die höchste Wahrscheinlichekit gewertet
     print(f"Wurde Icon gefunden?: {found} (Wahrscheinlichkeitswert: {probability})")
