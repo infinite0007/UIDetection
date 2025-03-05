@@ -17,7 +17,7 @@ pixel_stats = analyze_colors(ui_display)
 print("Farben erkannt: ")
 print(pixel_stats)
 
-# 5. OCR
+# 5. OCR Wichtig: in Benutzer/Username/.EasyOCR befindet sich nach erstmaligen Ausführen mit Internet das neuste benötigte OCR-KI Model. Falls Endgerät diese nicht hat einfach den Ordner mit neustem Model selber hinzufügen dann funktioniert es offline.
 detected_text = get_ocr_text(ui_display)
 print("Erkannter Text: ")
 print(detected_text)
