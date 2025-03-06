@@ -1,6 +1,29 @@
 # UIDetection Scientific Project
 Framework that leverages modern computer vision technologies to analyze individual image fragments, recognize the system’s operational mode, and verify that all elements are correctly positioned. This framework will serve as the backbone for automated testing, enabling reliable and efficient validation of visual elements in various test scenarios.
 
+## Installation Steps
+1. Install all necessary dependencies with:<br>
+`pip install -r requirements.txt` if your python version is under 9.0 and/or an error appears on installing the requirements.txt (Cargo Rust Package Manager) jump to step. 4
+
+2. If You have Internet skip this step! Otherwhise the OCR-Ai-model will not be automatically pulled. You have to put the EasyOCR into the User folder in Windows. For That copy the .EasyOCR folder and copy it to: C:\Users\username\
+The path should then look like that: C:\Users\lhglij1\\.EasyOCR
+
+3. Run script with: `python ui_detection.py`
+
+4. Only do this if error on step 1. appear. Download the .exe on: https://rustup.rs/ and start it. Choose option 1. for standard installation and install the option for installing Visual Studio Desktop development with C++. Also when starting the Visual Studio installer make sure that package was installed successfully. Make sure you do the Visual Studio C++ developement installation before installing the Rust distribution to prevent errors.
+<br><br>
+After that run following commands via terminal:
+<br>
+`pip uninstall urllib3`<br>
+`pip install urllib3==1.26.7`<br>
+<br>
+start from step. 1 again
+
+
+
+
+
+
 ## Requirements from University
 - critical view on project mandatory
 - why, how it is done
