@@ -10,7 +10,7 @@ The path should then look like that: C:\Users\lhglij1\\.EasyOCR
 
 3. Run script with: `python ui_detection.py`
 
-4. Only do this if error on step 1. appear. Download the .exe on: https://rustup.rs/ and start it. Choose option 1. for standard installation and install the option for installing Visual Studio Desktop development with C++. Also when starting the Visual Studio installer make sure that package was installed successfully. Make sure you do the Visual Studio C++ developement installation before installing the Rust distribution to prevent errors.
+4. Only do this if error on step 1. appear. Download the .exe on: https://rustup.rs/ and start it. Choose option 1. for standard installation and install the option for installing Visual Studio Desktop development with C++. Also when starting the Visual Studio installer make sure that package was installed successfully. Make sure you do the Visual Studio C++ developement installation before installing the Rust distribution to prevent errors. Watch the installation guide here: https://rust-lang.github.io/rustup/installation/windows-msvc.html
 <br><br>
 After that run following commands via terminal:
 <br>
