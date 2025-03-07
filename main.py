@@ -1,90 +1,44 @@
-import cv2 as cv
-import sys
-import numpy as np
+from ui_detection import read_image, calibrate_display, rectify_display_image, analyze_colors, get_ocr_text, isIconInImage, calculate_histograms
 
-# Lese das Bild input.png ein
-# input_image = cv.imread("./BooksOnTable/IMG_20180103_151716_selection.jpg") # Dino Book
-# input_image = cv.imread("./UI/9439808be83adceb.jpg")
-input_image = cv.imread("./UIHD/doorerrorshrinked.bmp") # Door Error
-# input_image = cv.imread("./starry_night_test/starry_night_picture.jpg") # Starry Night Picture
+# 1. Bild einlesen
+input_image_path = "./UIHD/settingslogi.jpg"
+input_image = read_image(input_image_path)
 
+# 2. Kalibrierung einmalig - Finde das größte, deutlichste Polygon mit 4 Kanten --> Vier/Rechteck
+# Einmalig pro Run aufrufen wenn man weiß, dass das UI mit nichtschwarzen Pixeln bereit ist um Ecken zu finden
+cornors_detected = calibrate_display(input_image) # Rückgabewert mal mit rein genommen falls man ihn nicht braucht weglassen
+print("Calibration successfull and cornors detected: ")
+print(cornors_detected)
 
-# Lese das Bild IMG ein
-# img = cv.imread("./BooksOnTable/IMG_20180103_151710.jpg") # Dino Book
-# img = cv.imread("./UI/5eb9e7ba88e3f5e9.jpg")
-# img = cv.imread("./UIHD/doorerror.bmp") # Door Error
-img = cv.imread("./UI/9199efcdd2e196ff.jpg") # Door Error lowquality
-# img = cv.imread("./starry_night_test/starry_night_gallery.jpg") # Starry Night Gallery
+# 3. Beliebig viele Bilder zu kalibrierter Form gebracht --> Wird den Displaymaßen entsprechend skaliert, gezogen - für zukünftige UIs einfach die Pixelwerte ändern
+# Muss für jedes Bild aufgerufen werden für den jeweiligen Run da Kalibrierung angewendet
+ui_display = rectify_display_image(input_image, target_size=(320, 240), visualize=False)
 
-# Überprüfen, ob beide Bilder erfolgreich geladen wurden
-if input_image is None or img is None:
-    sys.exit("Could not read one or both images.")
+# 4. Farbanalyse
+pixel_stats = analyze_colors(ui_display)
+print("Farben erkannt: ")
+print(pixel_stats)
 
-# Zielgröße definieren
-target_width = 800
-target_height = 800
-dim = (target_width, target_height)
+# 5. OCR Wichtig: in Benutzer/Username/.EasyOCR befindet sich nach erstmaligen Ausführen mit Internet das neuste benötigte OCR-KI Model. Falls Endgerät diese nicht hat einfach den Ordner mit neustem Model selber hinzufügen dann funktioniert es offline.
+detected_text = get_ocr_text(ui_display)
+print("Erkannter Text: ")
+print(detected_text)
 
-# Skaliere beide Bilder auf die Zielgröße
-resized_input = cv.resize(input_image, dim, interpolation=cv.INTER_AREA)
-resized_img = cv.resize(img, dim, interpolation=cv.INTER_AREA)
+# 6. Bildvergleich
+template_image_path = "./UIHD/071.bmp"
+template_image = read_image(template_image_path)
 
-# Konvertiere beide Bilder in Graustufen
-gray_input = cv.cvtColor(resized_input, cv.COLOR_BGR2GRAY)
-gray_img = cv.cvtColor(resized_img, cv.COLOR_BGR2GRAY)
+found, normed_Max_val = isIconInImage(ui_display, template_image, visualize=False, debug=False, match_threshold=0.3) # Wahrscheinlichkeit ab dem Bilder minimal noch als OK bewertet werden, bei manchen verschwommenen wird das benötigt, natürlich wird aber die höchste Wahrscheinlichekit gewertet
+print("Ist Icon in Image?: ")
+print(found)
 
-# Wende Canny Edge Detection an
-# edges_input = cv.Canny(gray_input, threshold1=50, threshold2=150)
-# edges_img = cv.Canny(gray_img, threshold1=50, threshold2=150)
-
-# Erstelle einen BRISK-Detector
-brisk = cv.BRISK_create()
-
-# Detektiere die Keypoints und Deskriptoren für beide Bilder
-kp_input, des_input = brisk.detectAndCompute(gray_input, None)
-kp_img, des_img = brisk.detectAndCompute(gray_img, None)
-
-# Überprüfen, ob Deskriptoren erfolgreich berechnet wurden
-if des_input is None or des_img is None:
-    sys.exit("Feature detection failed for one or both images.")
-
-# Erstelle einen Matcher (Brute-Force Matcher)
-bf = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
-
-# Finde die besten Übereinstimmungen zwischen den Deskriptoren
-matches = bf.match(des_input, des_img)
-
-# Sortiere die Matches nach Entfernung (je kleiner, desto besser)
-matches = sorted(matches, key=lambda x: x.distance)
-print("matches:", len(matches))
-
-# Visualisiere die Übereinstimmungen ohne RANSAC
-output_img = cv.drawMatches(resized_input, kp_input, resized_img, kp_img, matches[:], None, flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-# Ab hier mit RANSAC
-# Finde die Punkte, die den Matches entsprechen
-src_pts = np.float32([kp_input[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-dst_pts = np.float32([kp_img[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
-
-# Berechne die Homographie mit RANSAC
-# RANSAC gibt die Homographie-Matrix und die "inlier" Übereinstimmungen zurück
-M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
-
-# Maskiere die schlechten Matches (outliers)
-matches_mask = mask.ravel().tolist()
-good_matches = [m for i, m in enumerate(matches) if matches_mask[i]]
-
-# Visualisiere die guten Übereinstimmungen (inlier) nach RANSAC
-output_img = cv.drawMatches(resized_input, kp_input, resized_img, kp_img, good_matches, None, 
-                            matchColor=(0, 255, 0), singlePointColor=(0, 0, 255), flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-
-
-# Zeige das Ergebnis
-cv.imshow("Feature Matches", output_img)
-
-# Wenn "s" gedrückt wird, speichere das Ergebnis
-if cv.waitKey(0) == ord('s'):
-    cv.imwrite("./save/matched_image_RANSAC.png", output_img)
-
-cv.waitKey(0)
-cv.destroyAllWindows()
+# # Histogram ist drin und voll funktionsfähig wer will kann folgendes aufrufen:
+# # (R)ed, (G)reen, (B)lue
+# hist_r, hist_g, hist_b = calculate_histograms(ui_display)
+# # Print the histogram values
+# print("Red channel histogram:")
+# print(hist_r)
+# print("\nGreen channel histogram:")
+# print(hist_g)
+# print("\nBlue channel histogram:")
+# print(hist_b)
