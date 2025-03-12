@@ -10,7 +10,7 @@ Framework that leverages modern computer vision technologies to analyze individu
 2. If You have Internet skip this step! Otherwhise the OCR-Ai-model will not be automatically pulled. You have to put the EasyOCR into the User folder in Windows. For That copy the .EasyOCR folder and copy it to: C:\Users\username\
 The path should then look like that: C:\Users\lhglij1\\.EasyOCR
 
-3. Run script with: `python ui_detection.py`
+3. Run script with: `python ui_detection.py` or `demo.py` to see how it works
 
 4. Only do this if error on step 1. appear. Make sure you have Visual Studio installed with the extension: C++ Desktop developement with MSVC. This is needed for the following Rust distribution to prevent errors on compile. Watch the installation guide here: https://rust-lang.github.io/rustup/installation/windows-msvc.html
 Download the Rust-package manager .exe on: https://rustup.rs/ or if no internet download the offline-installer msvc (same 32/64bit version as your python interpreter) on https://forge.rust-lang.org/infra/other-installation-methods.html. Choose option 1. for standard installation and install the option for the current user with path-variables. for installing Visual Studio Desktop development with C++. Also when starting the Visual Studio installer make sure that package was installed successfully.
