@@ -37,24 +37,19 @@ start from step. 1 again
 
 ## Requirements from Liebherr
 #### Non functional:
-- runnable on standard lhg notebook
-- input full hd image or video
-- image brightness might be not optimal
-- angle might be not optimal
-- callable from python and integrateable in automation systems like jenkins
-- processing of single image shall not exceed 10s
-- framework shall be adaptable for different screens and sizes
-- Why we have a analogl approach for a digital solution? (Freezer Display → Camera → Code)
-- is it worth to have a more expensive equipment or is a casual camera enough? Are there any advantages in long-term?
+Execution on a standard company notebook
+- Input: Full HD images or video sequences
+  - Processing of a single image within 10 seconds
+  - Compatibility with Python and automation frameworks (Jenkins)
+  - Adaptability for various display sizes and resolutions
+  - Modular and maintainable code structure
 
 #### functional must have:
-- position and size of display shall be detectable
-- analyse output shall include number of pixel per color
-- analyse output shall include histogram pro color
-- detection of string content shall be possible (ocr)
-- it shall be possible to check if a given image is part of screen and if position is correct
-- detection of animation like blinking elements shall be possible
-  - output shall contain at least number of changing pixel, frequency and duty cycle
+- Detection of display position and dimensions
+- Analysis output includes pixel counts per color and color histograms
+- Text detection capability via OCR
+- Verification of UI-Template element presence
+- Detection of dynamic visual elements, including blinking animations, pixel variations, frequency, and duty cycle
 
 #### functional mid term:
 - automated interface to UI-sim
