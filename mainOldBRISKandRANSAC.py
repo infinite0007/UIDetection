@@ -5,14 +5,14 @@ import numpy as np
 # Lese das Bild input.png ein
 # input_image = cv.imread("./BooksOnTable/IMG_20180103_151716_selection.jpg") # Dino Book
 # input_image = cv.imread("./UI/9439808be83adceb.jpg")
-input_image = cv.imread("./UIHD/doorerror.bmp") # Door Error
+input_image = cv.imread("./starry_night_test/weingarten.png") # Door Error
 # input_image = cv.imread("./starry_night_test/starry_night_picture.jpg") # Starry Night Picture
 
 
 # Lese das Bild IMG ein
 # img = cv.imread("./BooksOnTable/IMG_20180103_151710.jpg") # Dino Book
 # img = cv.imread("./UI/5eb9e7ba88e3f5e9.jpg")
-img = cv.imread("./UIHD/doorerrorshrinked.bmp") # Door Error
+img = cv.imread("./starry_night_test/test_gallery_weingarten.jpg") # Door Error
 # img = cv.imread("./UI/9199efcdd2e196ff.jpg") # Door Error lowquality
 # img = cv.imread("./starry_night_test/starry_night_gallery.jpg") # Starry Night Gallery
 
@@ -73,6 +73,7 @@ M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
 # Maskiere die schlechten Matches (outliers)
 matches_mask = mask.ravel().tolist()
 good_matches = [m for i, m in enumerate(matches) if matches_mask[i]]
+print("best matches:", len(good_matches))
 
 # Visualisiere die guten Übereinstimmungen (inlier) nach RANSAC
 output_img = cv.drawMatches(resized_input, kp_input, resized_img, kp_img, good_matches, None, 
@@ -84,7 +85,7 @@ cv.imshow("Feature Matches", output_img)
 
 # Wenn "s" gedrückt wird, speichere das Ergebnis
 if cv.waitKey(0) == ord('s'):
-    cv.imwrite("./save/matched_image_RANSAC.png", output_img)
+    cv.imwrite("./save/matched_image_RANSAC_weingarten.png", output_img)
 
 cv.waitKey(0)
 cv.destroyAllWindows()
